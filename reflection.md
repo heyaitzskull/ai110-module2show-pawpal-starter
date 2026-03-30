@@ -79,7 +79,7 @@ This design aims to clearly separate responsibilities among the classes, simplif
 
 5. **Scheduler** *(the "Brain")*
    - **Attributes**:
-     - `owner`: Owner — the single owner whose pets' tasks are managed
+     - `owner`: Owner: the single owner whose pets' tasks are managed
    - **Methods**:
      - `get_all_tasks()` → List[Task]: iterates `owner.pets`, then each `pet.tasks`, collecting every task across all pets
      - `get_pending_tasks()` → List[Task]: calls `get_all_tasks()` and filters for `status == 'pending'`
@@ -92,7 +92,7 @@ This design aims to clearly separate responsibilities among the classes, simplif
 
    **Retrieval design:** The Scheduler does **not** query the flat `PawPalSystem.tasks` dict. Instead it walks the object graph: `owner.pets` (the list already maintained by `Owner.add_pet`) → `pet.tasks` (the list already maintained by `Pet.add_task`). This two-level traversal means tasks are always fetched in the context of the pet they belong to, which is exactly what's needed to produce a meaningful daily schedule.
 
-   **Relationships:** Bidirectional links between Owner-Pet and Pet-Task ensure consistency. PawPalSystem provides centralized management, while Scheduler handles scheduling logic.
+   **Relationships:** The links between Owner-Pet and Pet-Task ensure consistency. PawPalSystem provides centralized management, while Scheduler handles scheduling logic.
 
 **b. Design changes**
     - Did your design change during implementation?
@@ -108,7 +108,7 @@ This design aims to clearly separate responsibilities among the classes, simplif
 
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
 
-    My scheduler takes into account time—like sorting tasks by when they're scheduled and spotting conflicts—priority (ranking them from high to low), status (sticking to pending ones), due dates, and frequency for recurring tasks. I haven't woven in owner preferences yet, since I was zeroing in on the basics of task handling.
+    My scheduler takes into account time like sorting tasks by when they're scheduled and spotting conflicts, priority (ranking them from high to low), status (sticking to pending ones), due dates, and frequency for recurring tasks. I haven't woven in owner preferences yet, since I was zeroing in on the basics of task handling.
 
 - How did you decide which constraints mattered most?
     I went with priority and time as the big ones because they're essential for solid daily planning. High-priority stuff needs to jump the queue, and timing helps dodge overlaps. Status keeps things tidy by hiding completed tasks.
@@ -126,13 +126,11 @@ This design aims to clearly separate responsibilities among the classes, simplif
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+I used AI throughout most of the project to brainstorming the UML, writing the class logic, building the Streamlit UI, and generating tests. The most useful prompts were specific ones like "implement mark_as_completed with daily/weekly recurrence" or "add conflict detection to the Scheduler." Asking for focused pieces worked better than broad ones.
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+When AI generated the conflict detection logic, it initially flagged any two tasks at the same time as a conflict even for different owners. I changed it to only flag conflicts within the same owner's pets since that's the actual use case. I verified it by tracing through the logic manually and checking a few test cases by hand.
 
 ---
 
@@ -140,13 +138,13 @@ This design aims to clearly separate responsibilities among the classes, simplif
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+I tested task completion, daily and weekly recurrence, chronological sorting, and conflict detection. I also covered edge cases like empty task lists, single tasks, and tasks at midnight.
+
+These tests mattered because the scheduling logic is the core of the app where if recurrence or sorting breaks, the whole daily plan is wrong.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+Confidence is about a 4/5. The main cases all pass. The gap is that conflict detection ignores task duration, so two 30-minute tasks at 09:00 won't conflict even if they actually overlap. I'd test duration-aware conflicts and multi-pet scheduling next.
 
 ---
 
@@ -154,12 +152,12 @@ This design aims to clearly separate responsibilities among the classes, simplif
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+The class structure came together cleanly. The Owner-Pet and Pet-Task links stayed consistent throughout, and the Scheduler walking the object graph instead of querying a flat list felt like the right call.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+I feel like I used AI too much on this project and would want to do more on my own next time where I am using AI to help when I'm stuck, not to do the work for me. After all the goal is to learn, not redirect the complete task for AI to complete. I'd also redesign conflict detection to account for task duration instead of just start time.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+Designing the system on paper first made implementation a lot smoother. When the classes and relationships were clear upfront, writing the actual code was mostly just filling in the blanks.

@@ -63,9 +63,14 @@ The core scheduling logic holds up well across normal and edge cases. Knocked of
 
 ---
 
-## Smarter Scheduling
+## Features
 
-The scheduler now includes advanced features for better task management:
-- **Time-based sorting**: Tasks can be sorted by scheduled time to create chronological daily plans.
-- **Flexible filtering**: Filter tasks by status (pending/completed) or by specific pet for focused views.
-- **Conflict detection**: Automatically identifies overlapping tasks on the same date and time, providing warnings to help avoid scheduling issues.
+- **Priority-based sorting**: Tasks are ranked high → medium → low so the most critical care always surfaces first.
+- **Chronological sorting**: Tasks can be sorted by scheduled time (HH:MM) to produce a time-ordered daily plan.
+- **Status & pet filtering**: Filter the task list by completion status (`pending`/`completed`), by pet name, or both at once for focused views.
+- **Per-pet daily schedule**: Groups pending tasks by pet name so care responsibilities for each animal are visible at a glance.
+- **Conflict detection**: Identifies scheduling conflicts by grouping tasks with the same due date and start time — flags both same-pet overlaps (multiple tasks for one animal) and cross-pet overlaps (tasks for different animals at the same slot).
+- **Daily recurrence**: Completing a `daily` task automatically creates the next occurrence dated one day forward, preserving all original attributes.
+- **Weekly recurrence**: Same as daily recurrence but advances the due date by seven days.
+- **Cascading delete**: Deleting a pet removes all of its associated tasks from the system registry in one operation.
+- **Rename-safe editing**: Renaming a pet or task updates the internal lookup key so existing references remain consistent.

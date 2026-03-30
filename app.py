@@ -1,4 +1,4 @@
-from pawpal_system import Owner, Pet, Task, PawPalSystem
+from pawpal_system import Owner, Pet, Task, PawPalSystem, Scheduler
 import streamlit as st
 
 
@@ -71,7 +71,7 @@ pet_summary = st.session_state.pawpal_system.view_summary().get("pets", [])
 if pet_summary:
     st.markdown("### Pets")
     pet_table = [
-        {"name": p["name"], "type": p["type"], "age": p["age"], "owner": p["owner"]}
+        {"name": p["name"], "type": p["type"], "owner": p["owner"]}
         for p in pet_summary
     ]
     st.table(pet_table)
@@ -113,11 +113,17 @@ with col2:
 with col3:
     priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
 
+col4, col5 = st.columns(2)
+with col4:
+    task_time = st.text_input("Scheduled time (HH:MM)", value="09:00")
+with col5:
+    frequency = st.selectbox("Frequency", ["once", "daily", "weekly"])
+
 if st.button("Add task"):
     if not assign_pet:
         st.error("Select a pet first before adding a task.")
     else:
-        task = Task(description=task_title, duration=int(duration), priority=priority)
+        task = Task(description=task_title, duration=int(duration), priority=priority, time=task_time, frequency=frequency)
         pawpal_system.add_task(task, pet_name=assign_pet)
         st.success(f"Added task: {task.description} (for pet: {assign_pet})")
 
@@ -136,16 +142,15 @@ if not pawpal_system.pets:
     st.info("No pets available. Add a pet to enable edit/delete actions.")
 
 for pet in list(pawpal_system.pets.values()):
-    with st.expander(f"{pet.name} ({pet.type}), age {pet.age}"):
+    with st.expander(f"{pet.name} ({pet.type})"):
         st.write(pet.view_pet_details())
 
         new_pet_name = st.text_input("Pet name", value=pet.name, key=safe_key("edit_pet_name", pet.name))
         new_type = st.selectbox("Species", ["dog", "cat", "other"], index=["dog", "cat", "other"].index(pet.type if pet.type in ["dog","cat","other"] else "other"), key=safe_key("edit_pet_type", pet.name))
-        new_age = st.number_input("Age", min_value=0, max_value=30, value=pet.age, key=safe_key("edit_pet_age", pet.name))
 
         pet_actions = st.columns(2)
         if pet_actions[0].button("Save pet edits", key=safe_key("save_pet", pet.name)):
-            success = pawpal_system.edit_pet(pet.name, new_name=new_pet_name.strip(), type=new_type, age=int(new_age))
+            success = pawpal_system.edit_pet(pet.name, new_name=new_pet_name.strip(), type=new_type)
             if success:
                 st.success(f"Pet '{pet.name}' updated.")
             else:
@@ -161,9 +166,9 @@ for pet in list(pawpal_system.pets.values()):
         if not pet.tasks:
             st.info("No tasks for this pet yet")
 
-        for task in list(pet.tasks):
+        for i, task in enumerate(list(pet.tasks)):
             with st.container():
-                task_key = safe_key("task", pet.name, task.description)
+                task_key = safe_key("task", pet.name, task.description, str(i))
                 st.write(f"**{task.description}** — {task.duration} min — priority {task.priority} — status {task.status}")
 
                 if task.status != "completed":
@@ -193,18 +198,55 @@ for pet in list(pawpal_system.pets.values()):
 st.divider()
 
 st.subheader("Build Schedule")
-st.caption("This button should call your scheduling logic once you implement it.")
 
-if st.button("Generate schedule"):
-    st.info("Building summary from current PawPal system...")
-    summary = pawpal_system.view_summary()
-    st.write(summary)
-    st.markdown(
-        """
-Suggested approach:
-1. Design your UML (draft).
-2. Create class stubs (no logic).
-3. Implement scheduling behavior.
-4. Connect your scheduler here and display results.
-"""
-    )
+owner = st.session_state.owner
+scheduler = Scheduler(owner=owner)
+
+# --- Conflict warnings ---
+conflicts = scheduler.detect_conflicts()
+if conflicts:
+    st.markdown("#### ⚠️ Scheduling Conflicts")
+    for conflict in conflicts:
+        # Parse out the key parts for a friendlier message
+        st.warning(conflict)
+    st.caption("Fix conflicts above before relying on this schedule — overlapping tasks mean your pet can't do both at once.")
+else:
+    st.success("No scheduling conflicts found.")
+
+st.markdown("#### Daily Schedule")
+
+# --- Filter controls ---
+filter_col1, filter_col2 = st.columns(2)
+with filter_col1:
+    status_filter = st.selectbox("Filter by status", ["all", "pending", "completed"])
+with filter_col2:
+    pet_filter_options = ["all"] + [p.name for p in owner.pets]
+    pet_filter = st.selectbox("Filter by pet", pet_filter_options)
+
+# --- Build filtered + sorted task list ---
+filtered = scheduler.filter_tasks(
+    status=None if status_filter == "all" else status_filter,
+    pet_name=None if pet_filter == "all" else pet_filter,
+)
+sorted_tasks = sorted(
+    filtered,
+    key=lambda t: (t.due_date, int(t.time.split(":")[0]) * 60 + int(t.time.split(":")[1]))
+)
+
+if sorted_tasks:
+    rows = [
+        {
+            "Time": t.time,
+            "Due": t.due_date,
+            "Task": t.description,
+            "Pet": t.pet.name if t.pet else "—",
+            "Duration (min)": t.duration,
+            "Priority": t.priority,
+            "Frequency": t.frequency,
+            "Status": t.status,
+        }
+        for t in sorted_tasks
+    ]
+    st.table(rows)
+else:
+    st.info("No tasks match the current filters.")
